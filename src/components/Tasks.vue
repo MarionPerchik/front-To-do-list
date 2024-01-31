@@ -18,10 +18,10 @@
           </thead>
           <tbody>
             <tr v-if="showAddTaskForm" :key="tasks.length">
-              <td><input v-model="newTask.title" /></td>
-              <td><input v-model="newTask.description" /></td>
-              <td><input v-model="newTask.deadline1" type="date" /></td>
-              <td><input v-model="newTask.deadline2" type="date" /></td>
+              <td><input v-model="newTask.title"></td>
+              <td><input v-model="newTask.description"></td>
+              <td><input v-model="newTask.dateFrom" type="date" @change="checkDateNew"></td>
+              <td><input v-model="newTask.dateTo" :min="newTask.dateFrom" type="date"></td>
               <td>
                 <button type="button" class="btn btn-primary btn-sm mx-1" @click="saveNewTask">Сохранить</button>
                 <button type="button" class="btn btn-danger btn-sm mx-1" @click="closeAddTaskForm">Отмена</button>
@@ -38,12 +38,12 @@
                 <input v-else v-model="task.description">
               </td>
               <td>
-                <span v-if="editedTaskIndex !== index">{{ task.deadline1 }}</span>
-                <input v-else v-model="task.deadline1" type="date">
+                <span v-if="editedTaskIndex !== index">{{ task.dateFrom }}</span>
+                <input v-else v-model="task.dateFrom" type="date" @change="checkDateOld">
               </td>
               <td>
-                <span v-if="editedTaskIndex !== index">{{ task.deadline2 }}</span>
-                <input v-else v-model="task.deadline2" type="date">
+                <span v-if="editedTaskIndex !== index">{{ task.dateTo }}</span>
+                <input v-else v-model="task.dateTo" :min="task.dateFrom" type="date">
               </td>
               <td>
                 <button v-if="editedTaskIndex !== index" type="button" class="btn btn-warning btn-sm mx-1" @click="openEditModal(index)">Изменить</button>
@@ -66,20 +66,34 @@ export default {
     return {
       tasks: [], // инициализация пустого массива
       editedTaskIndex: null,
-      path: "http://localhost:5000/tasks", //адрес для запросов
-      showAddTaskForm: false, //заглушка для открытия формочки создания тасков
-      newTask: { //пустой JSON таск для будущего заполнения
+      path: "http://localhost:5000/tasks", // адрес для запросов
+      showAddTaskForm: false, // заглушка для открытия формочки создания тасков
+      newTask: { // пустой JSON таск для будущего заполнения
         title: '', 
         description: '',
-        deadline1: '',
-        deadline2: '',
+        dateFrom: '',
+        dateTo: '',
       },
     };
   },
 
   methods: {
+    checkDateNew(){ // проверяем ошибся ли пользователь при вводе даты и исправляем его ошибку
+      if (this.newTask.dateFrom > this.newTask.dateTo){
+        this.newTask.dateTo = this.newTask.dateFrom;
+      }
+    },
+
+    checkDateOld(){ // то же самое что и checkDateNew
+      if(this.task.dateFrom > this.task.dateTo){
+        this.task.dateFrom = this.task.dateTo
+      }
+    },
+
     openEditModal(index) {
       this.editedTaskIndex = index;
+      const beforeEditingTask = this.tasks[index];
+      console.log(beforeEditingTask);
     },
 
     openAddTaskForm() {
@@ -92,13 +106,13 @@ export default {
       this.newTask = {
         title: '',
         description: '',
-        deadline1: '',
-        deadline2: '',
+        dateFrom: '',
+        dateTo: '',
       };
     },
 
     saveNewTask() {
-      axios.post('http://localhost:5000/tasks', this.newTask)
+      axios.post('http://localhost:5000/tasks', this.newTask) //сохранение нового таска
         .then(response => {
           console.log(response.data.message);
           this.closeAddTaskForm();
@@ -110,10 +124,12 @@ export default {
     },
 
     saveChanges(index) {
-      const updatedTask = this.tasks[index]; // запоминаем индекс редактируемой задачи
+      const updatedTask = this.tasks[index]; // запоминаем редактируемую задачу
+      console.log(updatedTask)
+      console.log(this.tasks[index])
       axios.patch(`${this.path}/${index}`, updatedTask) // закидываем изменения
         .then((res) => {
-          console.log(res.data)
+          console.log(res.data);
           this.getTasks(); // обновляем список тасков
           this.editedTaskIndex = null;
         })
@@ -122,7 +138,7 @@ export default {
         })
     },
 
-    getTasks() {
+    getTasks() { // получаем список задач
       axios.get(this.path)
         .then((res) => {
           this.tasks = res.data.tasks;
@@ -132,7 +148,7 @@ export default {
         });
     },
     
-    deleteTask(index) {
+    deleteTask(index) { // удаляем задачу
     axios.delete(`${this.path}/${index}`)
       .then((response) => {
         console.log(response.data);
